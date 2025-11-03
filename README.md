@@ -12,6 +12,10 @@ A reading tracker web application that allows users to search for books using th
 - Kim
 - Maddie
 
+**Sprint 4:**
+- Max
+- Huma
+
 ---
 
 ## Project Description
@@ -34,14 +38,14 @@ A reading tracker web application that allows users to search for books using th
 
 ## Tech Stack
 
-| Layer             | Technology                     |
+| Layer              | Technology                  |
 |--------------------|-----------------------------|
-| Frontend           | React (Vite), React Router   |
-| Backend            | Node.js, Express.js          |
-| Database           | MySQL (`mysql2/promise`)     |
+| Frontend           | React (Vite), React Router  |
+| Backend            | Node.js, Express.js         |
+| Database           | MySQL (`mysql2/promise`)    |
 | External API       | Open Library API            |
-| Packaging     | Docker            |
-| Deployment         | Ubuntu Server         |
+| Packaging          | Docker                      |
+| Deployment         | Ubuntu Server               |
 
 ---
 
@@ -204,8 +208,8 @@ ex: http://0.0.0.0:5173  (replace 0.0.0.0 with VM IP)
 
 ## API Endpoints
 
-| Method | Endpoint                        | Description                         |
-|--------|-----------------------------------|-------------------------------------|
+| Method | Endpoint                          | Description                                  |
+|--------|-----------------------------------|--------------------------------------------- |
 | GET    | `/books`                          | Fetch all saved books              |
 | POST   | `/books`                          | Add a new book                     |
 | DELETE | `/books/:id`                      | Delete a book by ID                |
@@ -232,6 +236,62 @@ docker compose down
 - Ensure `.env` files are correctly configured
 - Confirm no leading spaces in env variables
 - Check firewall settings if deploying to a remote server (allow ports 3000 and 5173).
+
+---
+
+## Integration Testing (Node/Express + MySQL)
+The backend includes a production-like integration test setup that verifies the full stack using Jest, Supertest, and Dockerized MySQL.
+
+Features
+- Runs full Express + MySQL stack in test mode
+- Uses a real MySQL container (no mocks)
+- Stubs external Open Library API with nock
+- Cleans and resets the database for every run
+
+Prerequisites
+- Node.js v20+
+- Docker + Docker Compose
+
+## Test Setup Structure
+backend/
+├─ __tests__/
+│  ├─ setupTests.cjs      # Prepares DB before each test file
+│  └─ books.int.test.js   # Integration tests
+├─ init/sql/init.sql      # Schema definition
+├─ docker-compose.test.yml
+├─ jest.config.mjs
+└─ .env.test
+
+## Integration Test Quick Start (Beginning in Project Root)
+cd backend
+npm run test:ci
+
+This command:
+- Spins up a test MySQL container on port 3307
+- Loads .env.test
+- Runs Jest + Supertest integration tests
+- Cleans up containers afterward
+
+## Sample Output
+GET /books 200 ...
+POST /books 201 ...
+...
+ PASS  __tests__/books.int.test.js
+  Books CRUD (real MySQL)
+    ✓ GET /books => [] on fresh DB
+    ✓ POST /books then GET by id
+    ✓ POST /books without title => 400
+    ✓ PUT then DELETE
+  Open Library search (stubbed)
+    ✓ GET /books/search/:q maps fields
+
+## .env.test Example
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=test_user
+DB_PASSWORD=test_password
+DB_NAME=our_shelves_test
+NODE_ENV=test
 
 ---
 
