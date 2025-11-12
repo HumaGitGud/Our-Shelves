@@ -1,78 +1,71 @@
-import { jest } from '@jest/globals';
-import { getBookById } from '../controllers/booksDbController.js'; // <-- Path changed
-import db from '../db.js'; // <-- This import is for the mock setup
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-// --- Mock the Database ---
-// The path is relative to *this file*, so '../db.js' is correct.
-jest.mock('../db.js', () => ({
-  default: { query: jest.fn() }
+// 1. mock the DB module BEFORE importing anything else
+jest.unstable_mockModule('../db.js', () => ({
+  default: {
+    query: jest.fn(),
+    execute: jest.fn()
+  }
 }));
 
-// --- Start the Tests ---
-describe('BookDB Controller', () => {
-  // A helper function to create a mock Express response object
-  const mockResponse = () => {
-    const res = {};
-    res.status = jest.fn(() => res); // Use arrow fn to return 'res'
-    res.json = jest.fn(() => res);   // Use arrow fn to return 'res'
-    return res;
-  };
+// 2. import modules dynamically AFTER the mock is set up
+const { listBooks, createBook } = await import('../controllers/booksDbController.js');
+const db = (await import('../db.js')).default;
 
-  // Clear all mocks before each test
+// 3. start tests
+describe('Books DB Controller', () => {
+  let req, res;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    req = {};
+    res = {
+      status: jest.fn(() => res),
+      json: jest.fn()
+    };
   });
 
-  // Test 1: The "Happy Path" (Book is found)
-  it('should return a book when found', async () => {
-    // Arrange
-    const fakeBook = { id: 1, title: 'Test Book', author: 'Test Author' };
-    const req = { params: { id: '1' } };
-    const res = mockResponse();
+  describe('listBooks', () => {
+    it('should return a list of books', async () => {
+      const mockRows = [{ id: 1, title: 'Harry Potter' }];
+      
+      // mock 'query' to return rows
+      db.query.mockResolvedValue([mockRows]);
 
-    // Tell our mock DB to return the fake book
-    // Note: mysql2 returns [rows, fields], so we wrap `fakeBook` in two arrays.
-    db.query.mockResolvedValue([[fakeBook]]);
+      await listBooks(req, res);
 
-    // Act
-    await getBookById(req, res);
-
-    // Assert
-    // Check if the DB was called with the correct SQL
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE id = ?'), // Check if SQL is roughly correct
-      ['1'] // Check if the correct ID was passed
-    );
-
-    // Check if the user received the correct JSON
-    expect(res.json).toHaveBeenCalledWith(fakeBook);
+      expect(db.query).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(mockRows);
+    });
   });
 
-  // Test 2: The "Sad Path" (Book is not found)
-  it('should handle an API error gracefully', async () => {
-    // ---- Mute console.error ----
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  describe('createBook', () => {
+    it('should create a book and return 201', async () => {
+      req.body = { title: 'New Book', author: 'Me' };
+      
+      // mock 'execute' for INSERT
+      db.execute.mockResolvedValue([{ insertId: 10 }]);
 
-    // Arrange
-    const req = { params: { bookName: 'test book' } };
-    const res = mockResponse();
+      await createBook(req, res);
 
-    global.fetch.mockResolvedValue({
-      ok: false,
-      status: 500
+      expect(db.execute).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO books'),
+        expect.any(Array)
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        id: 10,
+        title: 'New Book'
+      }));
     });
 
-    // Act
-    await fetchBooks(req, res);
+    it('should return 400 if title is missing', async () => {
+      req.body = { author: 'Me' }; // no title
 
-    // Assert
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({
-      error: 'Failed to fetch books',
-      message: 'Open Library API error: 500'
+      await createBook(req, res);
+
+      expect(db.execute).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
     });
-
-    // ---- Restore console.error ----
-    consoleErrorSpy.mockRestore();
   });
 });
