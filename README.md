@@ -267,6 +267,93 @@ docker compose down
 
 ---
 
+## Testing the Application
+
+## Backend Unit Tests — Jest (Isolated Logic)
+
+Unit tests verify the logic of individual controllers without connecting to a real database or external APIs. Dependencies like MySQL and Open Library are **mocked**.
+
+## Test Setup Structure
+```
+backend/
+├─ __tests__/
+│  ├─ bookController.test.js      # Tests Open Library API logic (Mocks global.fetch)
+│  └─ booksDbController.test.js   # Tests DB CRUD logic (Mocks mysql2)
+├─ controllers/
+└─ jest.config.mjs
+```
+## Unit Test Quick Start (Beginning in Project Root)
+
+```
+cd backend
+npm test -- __tests__/bookController.test.js __tests__/booksDbController.test.js
+```
+
+(Note: Ensure your package.json script targets the specific unit test files or uses the unit test configuration to avoid running integration tests).
+
+This command:
+* Runs Jest with ES Modules support
+* Mocks the mysql2 database connection (No Docker required)
+* Mocks external API calls to Open Library
+* Verifies controller logic, status codes, and JSON responses
+
+## Sample Output
+
+```
+PASS  __tests__/bookController.test.js
+PASS  __tests__/booksDbController.test.js
+
+Test Suites: 2 passed, 2 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        0.564 s
+```
+
+## Frontend Unit Tests — Vitest (Components & Interaction)
+Frontend tests utilize Vitest and React Testing Library to verify component rendering and user interactions in a simulated browser environment (happy-dom).
+
+## Test Setup Structure
+```
+frontend/
+├─ src/
+│  ├─ __tests__/
+│  │  ├─ BookCard.test.jsx      # Tests rendering and "Delete" interaction
+│  │  ├─ SearchSection.test.jsx # Tests input typing and Form submission
+│  │  └─ setupTests.js          # Configures matchers and global mocks
+├─ vite.config.js               # Configured with happy-dom environment
+└─ package.json
+```
+## Unit Test Quick Start (Beginning in Project Root)
+
+```
+cd frontend
+npm test
+```
+
+This command:
+
+* Launches Vitest in a happy-dom environment (Faster than jsdom)
+* Mocks browser-specific APIs (e.g., window.alert, fetch)
+* Mounts React components in isolation
+* Simulates user events (Typing example book name "Dune", clicking "Delete")
+
+## Sample Output
+```
+DEV  v4.0.8 .../Our-Shelves/frontend
+
+ ✓ src/__tests__/BookCard.test.jsx (2 tests)
+   ✓ BookCard Component
+     ✓ renders book information correctly
+     ✓ calls delete API when delete button is clicked
+ ✓ src/__tests__/SearchSection.test.jsx (2 tests)
+   ✓ SearchSection Component
+     ✓ renders search input and button
+     ✓ fetches books when search is submitted
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+```
+
 ## Integration Testing (Node/Express + MySQL)
 
 The backend includes a production-like integration test setup that verifies the full stack using Jest, Supertest, and Dockerized MySQL.
@@ -284,7 +371,7 @@ Prerequisites
 * Docker + Docker Compose
 
 ## Test Setup Structure
-
+```
 backend/
 ├─ **tests**/
 │  ├─ setupTests.cjs      # Prepares DB before each test file
@@ -293,6 +380,7 @@ backend/
 ├─ docker-compose.test.yml
 ├─ jest.config.mjs
 └─ .env.test
+```
 
 ## Integration Test Quick Start (Beginning in Project Root)
 
@@ -307,7 +395,7 @@ This command:
 * Cleans up containers afterward
 
 ## Sample Output
-
+```
 GET /books 200 ...
 POST /books 201 ...
 ...
@@ -319,6 +407,7 @@ Books CRUD (real MySQL)
 ✓ PUT then DELETE
 Open Library search (stubbed)
 ✓ GET /books/search/:q maps fields
+```
 
 ## .env.test Example
 
@@ -350,13 +439,14 @@ Prerequisites
 * Playwright installed globally or via npm
 
 ## Test Setup Structure
-
+```
 e2e/
 ├─ tests/
 │  └─ app.e2e.spec.js      # Main E2E test file (Search/Add/Delete flow)
 ├─ utils/
 │  └─ resetDb.js           # Resets test database before each run
 └─ playwright.config.js    # Playwright configuration file
+```
 
 ## Playwright Installation (Beginning in Project Root)
 
